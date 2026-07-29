@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0B1928">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DN Asistencia">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>DN Training · Asistencia</title>
+<style>
+:root{
+  --cream:#FCFAF9;
+  --paper:#FFFFFF;
+  --line:#E8E1D8;
+  --navy:#0B1928;
+  --navy-soft:#16283D;
+  --teal:#2088A9;
+  --teal-wash:#E3F1F5;
+  --magenta:#9C1C63;
+  --magenta-wash:#F7E7EF;
+  --gold:#DE9A44;
+  --gold-wash:#FBF0DF;
+  --text:#16202B;
+  --muted:#7C7368;
+  --radius:16px;
+  --grad:linear-gradient(120deg, var(--teal) 0%, var(--magenta) 58%, var(--gold) 100%);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; background:var(--cream); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  overscroll-behavior-y:none;}
+body{padding-bottom:env(safe-area-inset-bottom);}
+#app{max-width:520px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+header{padding:22px 20px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand img{width:44px; height:44px; border-radius:50%; box-shadow:0 2px 8px rgba(11,25,40,.18); flex-shrink:0;}
+.brand .txt{display:flex; flex-direction:column;}
+.brand .eyebrow{font-size:11px; letter-spacing:.16em; text-transform:uppercase; font-weight:800;
+  background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.brand h1{margin:1px 0 0; font-size:22px; font-weight:800; letter-spacing:-.02em; color:var(--navy);}
+.brand .date{color:var(--muted); font-size:12px; margin-top:2px;}
+.icon-btn{width:40px; height:40px; border-radius:12px; background:var(--paper); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; color:var(--navy); font-size:18px; cursor:pointer;
+  box-shadow:0 1px 3px rgba(11,25,40,.06);}
+.icon-btn:active{background:var(--teal-wash);}
+
+nav#tabs{display:flex; gap:8px; padding:14px 20px 4px;}
+.tab{flex:1; text-align:center; padding:10px 0; border-radius:12px; font-size:14px; font-weight:700;
+  color:var(--muted); background:var(--paper); border:1px solid var(--line); cursor:pointer;}
+.tab.active{color:#fff; background:var(--navy); border-color:var(--navy);}
+
+main{flex:1; padding:16px 20px 100px;}
+
+.grid-blocks{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.block-card{position:relative; overflow:hidden; background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); padding:16px; cursor:pointer; min-height:132px; display:flex; flex-direction:column; justify-content:space-between;
+  box-shadow:0 1px 3px rgba(11,25,40,.05);}
+.block-card:active{background:var(--teal-wash);}
+.block-card .hora{font-size:34px; font-weight:800; letter-spacing:-.03em; line-height:1; color:var(--navy);}
+.block-card .hora sup{font-size:14px; font-weight:600; color:var(--muted); margin-left:2px;}
+.block-card .cupos{font-size:12px; color:var(--muted); margin-top:6px;}
+.block-card .fill{position:absolute; left:0; bottom:0; height:5px; background:var(--grad); border-radius:0 4px 0 0;}
+.block-card .cupos b{color:var(--navy);}
+
+.section-title{font-size:12px; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700; margin:22px 0 10px;}
+
+.client-row{display:flex; align-items:center; gap:12px; background:var(--paper); border:1px solid var(--line);
+  border-radius:14px; padding:12px 14px; margin-bottom:10px; box-shadow:0 1px 3px rgba(11,25,40,.04);}
+.client-row .info{flex:1; min-width:0;}
+.client-row .nombre{font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--navy);}
+.client-row .meta{font-size:12px; color:var(--muted); margin-top:2px; display:flex; gap:8px; flex-wrap:wrap;}
+.pill{display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700;}
+.pill.ok{background:var(--teal-wash); color:var(--teal);}
+.pill.warn{background:var(--gold-wash); color:#9C6A1F;}
+.pill.bad{background:var(--magenta-wash); color:var(--magenta);}
+
+.chk{width:38px; height:38px; border-radius:12px; border:2px solid var(--line); background:transparent;
+  display:flex; align-items:center; justify-content:center; font-size:18px; cursor:pointer; flex-shrink:0; color:var(--muted);}
+.chk.presente{background:var(--teal); border-color:var(--teal); color:#fff;}
+.chk.ausente{background:var(--magenta-wash); border-color:var(--magenta); color:var(--magenta);}
+
+.empty{text-align:center; color:var(--muted); padding:40px 10px; font-size:14px;}
+
+#fab{position:fixed; right:20px; bottom:24px; width:56px; height:56px; border-radius:18px; background:var(--grad);
+  color:#fff; border:none; font-size:28px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 20px rgba(156,28,99,.30); cursor:pointer; z-index:20;}
+#fab:active{transform:scale(.95);}
+
+.date-nav{display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:14px;}
+.date-nav button{background:var(--paper); border:1px solid var(--line); color:var(--navy); width:34px; height:34px;
+  border-radius:10px; font-size:16px; cursor:pointer;}
+.date-nav .cur{font-size:14px; font-weight:700; min-width:120px; text-align:center; text-transform:capitalize; color:var(--navy);}
+
+/* modal */
+.overlay{position:fixed; inset:0; background:rgba(11,25,40,.45); display:flex; align-items:flex-end; z-index:50;}
+.sheet{background:var(--paper); width:100%; max-width:520px; margin:0 auto; border-radius:22px 22px 0 0;
+  padding:22px 20px calc(24px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
+  border-top:3px solid transparent; border-image:var(--grad) 1;}
+.sheet h2{margin:0 0 4px; font-size:20px; font-weight:800; color:var(--navy);}
+.sheet .sub{color:var(--muted); font-size:13px; margin-bottom:18px;}
+label{display:block; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:14px 0 6px;}
+input[type=text],input[type=date],select{width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line);
+  background:var(--cream); color:var(--text); font-size:15px; font-family:inherit;}
+.seg{display:flex; gap:8px;}
+.seg > div{flex:1; text-align:center; padding:10px 0; border-radius:12px; border:1px solid var(--line); background:var(--cream);
+  font-weight:700; font-size:14px; cursor:pointer; color:var(--muted);}
+.seg > div.sel{background:var(--navy); border-color:var(--navy); color:#fff;}
+.seg.dias{flex-wrap:wrap;}
+.seg.dias > div{flex:0 0 auto; width:calc((100% - 40px)/6); padding:10px 0; font-size:13px;}
+.seg.dias > div.sel{background:var(--teal); border-color:var(--teal); color:#fff;}
+.money{position:relative;}
+.money input{padding-left:30px;}
+.money::before{content:"$"; position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); font-weight:700; z-index:1;}
+.chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;}
+.chip{background:var(--cream); border:1px solid var(--line); border-radius:10px; padding:4px 9px; font-size:12px; font-weight:700; color:var(--muted);}
+.chip.on{background:var(--teal-wash); border-color:var(--teal); color:var(--teal);}
+.summary-card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:16px;
+  display:flex; justify-content:space-between; align-items:center; border-left:4px solid var(--gold); box-shadow:0 1px 3px rgba(11,25,40,.05);}
+.summary-card .l{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-weight:700;}
+.summary-card .n{font-size:22px; font-weight:800; margin-top:2px; color:var(--navy);}
+.actions{display:flex; gap:10px; margin-top:22px;}
+.btn{flex:1; padding:14px; border-radius:14px; border:none; font-weight:800; font-size:15px; cursor:pointer;}
+.btn.primary{background:var(--navy); color:#fff;}
+.btn.ghost{background:var(--cream); color:var(--navy); border:1px solid var(--line);}
+.btn.danger{background:var(--magenta-wash); color:var(--magenta); border:1px solid var(--magenta);}
+.close-x{position:absolute; top:16px; right:16px; background:var(--cream); border:none; color:var(--muted);
+  width:32px; height:32px; border-radius:10px; font-size:16px; cursor:pointer;}
+
+.stat-row{display:flex; gap:10px; margin-top:14px;}
+.stat{flex:1; background:var(--cream); border-radius:14px; padding:12px; text-align:center;}
+.stat .n{font-size:22px; font-weight:800; color:var(--navy);}
+.stat .l{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
+
+.hist{max-height:160px; overflow-y:auto; margin-top:8px;}
+.hist-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px;}
+.hist-row:last-child{border-bottom:none;}
+.hist-row .e{font-weight:700;}
+.hist-row .e.p{color:var(--teal);}
+.hist-row .e.a{color:var(--magenta);}
+
+.toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%); background:var(--navy); color:#fff;
+  padding:10px 18px; border-radius:30px; font-size:13px; font-weight:700; z-index:80; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+::-webkit-scrollbar{width:0; height:0;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <img src="logo-96.png" alt="DN Training">
+      <div class="txt">
+        <span class="eyebrow">DN Training</span>
+        <h1>Asistencia</h1>
+        <span class="date" id="headerDate"></span>
+      </div>
+    </div>
+    <button class="icon-btn" id="btnBackup" title="Backup">⇅</button>
+  </header>
+
+  <nav id="tabs">
+    <div class="tab active" data-tab="dashboard">Bloques</div>
+    <div class="tab" data-tab="pagos">Pagos</div>
+  </nav>
+
+  <main id="view"></main>
+  <button id="fab">+</button>
+</div>
+<div id="modal-root"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Datos ---------- */
+const BLOQUES = [19,20,21,22];
+const CAPACIDAD = 20;
+const STORAGE_KEY = "dnt_clients_v1";
+const DIAS = [
+  {k:"L", label:"Lun"}, {k:"M", label:"Mar"}, {k:"X", label:"Mié"},
+  {k:"J", label:"Jue"}, {k:"V", label:"Vie"}, {k:"S", label:"Sáb"}
+];
+const WEEKDAY_KEY_BY_GETDAY = ["D","L","M","X","J","V","S"]; // getDay(): 0=Domingo
+
+function fmtMoney(n){
+  n = Number(n)||0;
+  return n.toLocaleString("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0});
+}
+
+function loadClients(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; }
+}
+function saveClients(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+let clients = loadClients();
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function addDays(iso, n){ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
+}
+function fmtDateShort(iso){
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("es-CL",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+
+/* ---------- Estado UI ---------- */
+let state = { tab:"dashboard", bloque:null, fecha: todayISO() };
+
+/* ---------- Render raíz ---------- */
+const view = document.getElementById("view");
+const headerDate = document.getElementById("headerDate");
+
+function render(){
+  headerDate.textContent = fmtDate(todayISO());
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===state.tab));
+  if(state.tab==="dashboard" && state.bloque===null) renderDashboard();
+  else if(state.tab==="dashboard" && state.bloque!==null) renderBloque();
+  else if(state.tab==="pagos") renderPagos();
+}
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click", ()=>{ state.tab=t.dataset.tab; state.bloque=null; render(); });
+});
+
+/* ---------- Dashboard de bloques ---------- */
+function renderDashboard(){
+  let html = `<div class="grid-blocks">`;
+  BLOQUES.forEach(h=>{
+    const inscritos = clients.filter(c=>c.bloque===h).length;
+    const pct = Math.min(100, Math.round((inscritos/CAPACIDAD)*100));
+    html += `
+      <div class="block-card" data-bloque="${h}">
+        <div>
+          <div class="hora">${h}<sup>:00</sup></div>
+          <div class="cupos"><b>${inscritos}</b> / ${CAPACIDAD} cupos</div>
+        </div>
+        <div class="fill" style="width:${pct}%"></div>
+      </div>`;
+  });
+  html += `</div>`;
+  view.innerHTML = html;
+  document.querySelectorAll(".block-card").forEach(el=>{
+    el.addEventListener("click", ()=>{ state.bloque = parseInt(el.dataset.bloque); render(); });
+  });
+}
+
+/* ---------- Vista de un bloque (asistencia del día) ---------- */
+function renderBloque(){
+  const h = state.bloque;
+  const all = clients.filter(c=>c.bloque===h).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const wk = WEEKDAY_KEY_BY_GETDAY[new Date(state.fecha+"T00:00:00").getDay()];
+  const list = all.filter(c=> (c.dias||[]).includes(wk));
+  let html = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <button class="icon-btn" id="btnBack">←</button>
+      <div>
+        <div style="font-weight:800;font-size:18px;">Bloque ${h}:00</div>
+        <div style="font-size:12px;color:var(--muted);">${all.length} / ${CAPACIDAD} inscritos en total</div>
+      </div>
+    </div>
+    <div class="date-nav">
+      <button id="prevDay">‹</button>
+      <div class="cur">${fmtDate(state.fecha)}</div>
+      <button id="nextDay">›</button>
+    </div>`;
+
+  if(wk==="D"){
+    html += `<div class="empty">Domingo — normalmente sin clases.<br>Usa las flechas para ver otro día.</div>`;
+  } else if(list.length===0){
+    html += `<div class="empty">Nadie tiene este día asignado en el bloque ${h}:00.<br>Toca “+” para agregar un cliente.</div>`;
+  } else {
+    list.forEach(c=>{
+      const rec = c.historial.find(h2=>h2.fecha===state.fecha);
+      const est = rec ? rec.estado : null;
+      const pct = attendancePct(c);
+      html += `
+        <div class="client-row" data-id="${c.id}">
+          <div class="info" data-open="${c.id}">
+            <div class="nombre">${escapeHtml(c.nombre)}</div>
+            <div class="meta">
+              <span class="pill ${pillClass(pct)}">${pct}% asist.</span>
+              <span>${c.plan}x/sem</span>
+              <span>${(c.dias||[]).join(" · ")}</span>
+            </div>
+          </div>
+          <div class="chk ${est==='presente'?'presente':''}" data-action="presente" data-id="${c.id}">✓</div>
+          <div class="chk ${est==='ausente'?'ausente':''}" data-action="ausente" data-id="${c.id}">✕</div>
+        </div>`;
+    });
+  }
+  view.innerHTML = html;
+
+  document.getElementById("btnBack").addEventListener("click", ()=>{ state.bloque=null; render(); });
+  document.getElementById("prevDay").addEventListener("click", ()=>{ state.fecha = addDays(state.fecha,-1); render(); });
+  document.getElementById("nextDay").addEventListener("click", ()=>{ state.fecha = addDays(state.fecha,1); render(); });
+
+  document.querySelectorAll("[data-action]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      markAttendance(el.dataset.id, el.dataset.action);
+    });
+  });
+  document.querySelectorAll("[data-open]").forEach(el=>{
+    el.addEventListener("click", ()=> openClientProfile(el.dataset.open));
+  });
+}
+
+function markAttendance(id, estado){
+  const c = clients.find(c=>c.id===id);
+  if(!c) return;
+  const idx = c.historial.findIndex(h=>h.fecha===state.fecha);
+  if(idx>-1){
+    if(c.historial[idx].estado===estado){ c.historial.splice(idx,1); } // toca de nuevo = quitar marca
+    else c.historial[idx].estado = estado;
+  } else {
+    c.historial.push({fecha:state.fecha, estado});
+  }
+  saveClients(clients);
+  render();
+}
+
+function attendancePct(c){
+  if(!c.historial.length) return 0;
+  const pres = c.historial.filter(h=>h.estado==="presente").length;
+  return Math.round((pres/c.historial.length)*100);
+}
+function pillClass(pct){
+  if(pct>=80) return "ok";
+  if(pct>=50) return "warn";
+  return "bad";
+}
+function renewalStatus(c){
+  const diff = Math.round((new Date(c.fechaRenovacion) - new Date(todayISO()))/86400000);
+  if(diff<0) return {label:`Vencido hace ${Math.abs(diff)}d`, cls:"bad"};
+  if(diff<=5) return {label:`Vence en ${diff}d`, cls:"warn"};
+  return {label:`Al día · ${diff}d`, cls:"ok"};
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+
+/* ---------- Vista de pagos ---------- */
+function renderPagos(){
+  const sorted = [...clients].sort((a,b)=> new Date(a.fechaRenovacion) - new Date(b.fechaRenovacion));
+  const ingresoMensual = clients.reduce((s,c)=>s+(Number(c.valorMensualidad)||0),0);
+  const vencidos = clients.filter(c=>renewalStatus(c).cls==="bad").reduce((s,c)=>s+(Number(c.valorMensualidad)||0),0);
+  let html = `
+    <div class="summary-card">
+      <div><div class="l">Ingreso mensual esperado</div><div class="n">${fmtMoney(ingresoMensual)}</div></div>
+    </div>`;
+  if(vencidos>0){
+    html += `
+    <div class="summary-card" style="border-left-color:var(--magenta);">
+      <div><div class="l">Pendiente por vencidos</div><div class="n" style="color:var(--magenta);">${fmtMoney(vencidos)}</div></div>
+    </div>`;
+  }
+  html += `<div class="section-title">Renovaciones · ${clients.length} clientes</div>`;
+  if(sorted.length===0){
+    html += `<div class="empty">Todavía no hay clientes registrados.</div>`;
+  } else {
+    sorted.forEach(c=>{
+      const rs = renewalStatus(c);
+      html += `
+        <div class="client-row" data-open="${c.id}">
+          <div class="info">
+            <div class="nombre">${escapeHtml(c.nombre)}</div>
+            <div class="meta">
+              <span class="pill ${rs.cls}">${rs.label}</span>
+              <span>Bloque ${c.bloque}:00</span>
+              <span>${fmtDateShort(c.fechaRenovacion)}</span>
+              <span>${fmtMoney(c.valorMensualidad)}</span>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+  view.innerHTML = html;
+  document.querySelectorAll("[data-open]").forEach(el=>{
+    el.addEventListener("click", ()=> openClientProfile(el.dataset.open));
+  });
+}
+
+/* ---------- Modales ---------- */
+const modalRoot = document.getElementById("modal-root");
+function closeModal(){ modalRoot.innerHTML=""; }
+
+function openAddClient(){
+  const html = `
+    <div class="overlay" id="ov">
+      <div class="sheet">
+        <button class="close-x" id="cx">✕</button>
+        <h2>Nuevo cliente</h2>
+        <div class="sub">Se agrega al bloque y queda listo para marcar asistencia.</div>
+
+        <label>Nombre</label>
+        <input type="text" id="fNombre" placeholder="Nombre y apellido">
+
+        <label>Bloque horario</label>
+        <div class="seg" id="segBloque">
+          ${BLOQUES.map(h=>`<div data-v="${h}">${h}:00</div>`).join("")}
+        </div>
+
+        <label>Plan (veces por semana)</label>
+        <div class="seg" id="segPlan">
+          <div data-v="2">2x</div>
+          <div data-v="3">3x</div>
+        </div>
+
+        <label>Días que asiste</label>
+        <div class="seg dias" id="segDias">
+          ${DIAS.map(d=>`<div data-v="${d.k}">${d.label}</div>`).join("")}
+        </div>
+
+        <label>Valor mensualidad</label>
+        <div class="money"><input type="text" inputmode="numeric" id="fValor" placeholder="30.000"></div>
+
+        <label>Fecha de inscripción</label>
+        <input type="date" id="fInsc" value="${todayISO()}">
+
+        <label>Próxima renovación</label>
+        <input type="date" id="fRenov" value="${addDays(todayISO(),30)}">
+
+        <div class="actions">
+          <button class="btn ghost" id="cancelAdd">Cancelar</button>
+          <button class="btn primary" id="saveAdd">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  modalRoot.innerHTML = html;
+
+  let selBloque = state.bloque || BLOQUES[0];
+  let selPlan = 2;
+  let selDias = new Set();
+  const segB = document.getElementById("segBloque");
+  const segP = document.getElementById("segPlan");
+  const segD = document.getElementById("segDias");
+  const fValor = document.getElementById("fValor");
+  function paintSeg(container, val){
+    container.querySelectorAll("div").forEach(d=>d.classList.toggle("sel", parseInt(d.dataset.v)===val));
+  }
+  paintSeg(segB, selBloque); paintSeg(segP, selPlan);
+  segB.querySelectorAll("div").forEach(d=>d.addEventListener("click", ()=>{ selBloque=parseInt(d.dataset.v); paintSeg(segB, selBloque); }));
+  segP.querySelectorAll("div").forEach(d=>d.addEventListener("click", ()=>{ selPlan=parseInt(d.dataset.v); paintSeg(segP, selPlan); }));
+  segD.querySelectorAll("div").forEach(d=>d.addEventListener("click", ()=>{
+    const k = d.dataset.v;
+    if(selDias.has(k)) selDias.delete(k); else selDias.add(k);
+    d.classList.toggle("sel", selDias.has(k));
+  }));
+  fValor.addEventListener("input", ()=>{
+    const digits = fValor.value.replace(/\D/g,"");
+    fValor.value = digits ? Number(digits).toLocaleString("es-CL") : "";
+  });
+
+  document.getElementById("cx").addEventListener("click", closeModal);
+  document.getElementById("cancelAdd").addEventListener("click", closeModal);
+  document.getElementById("ov").addEventListener("click", (e)=>{ if(e.target.id==="ov") closeModal(); });
+
+  document.getElementById("saveAdd").addEventListener("click", ()=>{
+    const nombre = document.getElementById("fNombre").value.trim();
+    if(!nombre){ showToast("Escribe un nombre"); return; }
+    const inscritosBloque = clients.filter(c=>c.bloque===selBloque).length;
+    if(inscritosBloque>=CAPACIDAD){ showToast("Ese bloque ya está lleno (20/20)"); return; }
+    if(selDias.size===0){ showToast("Selecciona al menos un día"); return; }
+    clients.push({
+      id: uid(),
+      nombre,
+      bloque: selBloque,
+      plan: selPlan,
+      dias: Array.from(selDias),
+      valorMensualidad: Number(fValor.value.replace(/\D/g,""))||0,
+      fechaInscripcion: document.getElementById("fInsc").value || todayISO(),
+      fechaRenovacion: document.getElementById("fRenov").value || addDays(todayISO(),30),
+      historial: []
+    });
+    saveClients(clients);
+    closeModal();
+    showToast("Cliente agregado");
+    render();
+  });
+}
+
+function openClientProfile(id){
+  const c = clients.find(c=>c.id===id);
+  if(!c) return;
+  const pct = attendancePct(c);
+  const rs = renewalStatus(c);
+  const pres = c.historial.filter(h=>h.estado==="presente").length;
+  const aus = c.historial.filter(h=>h.estado==="ausente").length;
+  const histSorted = [...c.historial].sort((a,b)=> new Date(b.fecha)-new Date(a.fecha));
+
+  const html = `
+    <div class="overlay" id="ov">
+      <div class="sheet">
+        <button class="close-x" id="cx">✕</button>
+        <h2>${escapeHtml(c.nombre)}</h2>
+        <div class="sub">Bloque ${c.bloque}:00 · Plan ${c.plan}x por semana</div>
+
+        <div class="stat-row">
+          <div class="stat"><div class="n">${pct}%</div><div class="l">Asistencia</div></div>
+          <div class="stat"><div class="n">${pres}</div><div class="l">Presentes</div></div>
+          <div class="stat"><div class="n">${aus}</div><div class="l">Ausentes</div></div>
+        </div>
+
+        <label>Días asignados</label>
+        <div class="seg dias" id="segDiasEdit">
+          ${DIAS.map(d=>`<div data-v="${d.k}" class="${(c.dias||[]).includes(d.k)?'sel':''}">${d.label}</div>`).join("")}
+        </div>
+
+        <label>Valor mensualidad</label>
+        <div class="money"><input type="text" inputmode="numeric" id="fValorEdit" value="${Number(c.valorMensualidad||0).toLocaleString('es-CL')}"></div>
+
+        <label>Estado de pago</label>
+        <div class="pill ${rs.cls}" style="font-size:13px;padding:8px 12px;">${rs.label}</div>
+
+        <label>Fecha de renovación</label>
+        <input type="date" id="fRenovEdit" value="${c.fechaRenovacion}">
+        <div class="actions">
+          <button class="btn ghost" id="renovar30">+30 días</button>
+          <button class="btn primary" id="saveRenov">Guardar cambios</button>
+        </div>
+
+        <label>Historial reciente</label>
+        <div class="hist">
+          ${histSorted.length===0 ? '<div class="empty" style="padding:16px 0;">Sin registros aún</div>' :
+            histSorted.slice(0,20).map(h=>`
+              <div class="hist-row">
+                <span>${fmtDateShort(h.fecha)}</span>
+                <span class="e ${h.estado==='presente'?'p':'a'}">${h.estado==='presente'?'Presente':'Ausente'}</span>
+              </div>`).join("")}
+        </div>
+
+        <div class="actions">
+          <button class="btn danger" id="delClient">Eliminar cliente</button>
+        </div>
+      </div>
+    </div>`;
+  modalRoot.innerHTML = html;
+  document.getElementById("cx").addEventListener("click", closeModal);
+  document.getElementById("ov").addEventListener("click", (e)=>{ if(e.target.id==="ov") closeModal(); });
+
+  let editDias = new Set(c.dias||[]);
+  const segDE = document.getElementById("segDiasEdit");
+  segDE.querySelectorAll("div").forEach(d=>d.addEventListener("click", ()=>{
+    const k = d.dataset.v;
+    if(editDias.has(k)) editDias.delete(k); else editDias.add(k);
+    d.classList.toggle("sel", editDias.has(k));
+  }));
+  const fValorEdit = document.getElementById("fValorEdit");
+  fValorEdit.addEventListener("input", ()=>{
+    const digits = fValorEdit.value.replace(/\D/g,"");
+    fValorEdit.value = digits ? Number(digits).toLocaleString("es-CL") : "";
+  });
+
+  document.getElementById("renovar30").addEventListener("click", ()=>{
+    document.getElementById("fRenovEdit").value = addDays(document.getElementById("fRenovEdit").value || todayISO(), 30);
+  });
+  document.getElementById("saveRenov").addEventListener("click", ()=>{
+    if(editDias.size===0){ showToast("Selecciona al menos un día"); return; }
+    c.fechaRenovacion = document.getElementById("fRenovEdit").value;
+    c.dias = Array.from(editDias);
+    c.valorMensualidad = Number(fValorEdit.value.replace(/\D/g,""))||0;
+    saveClients(clients);
+    showToast("Cambios guardados");
+    closeModal();
+    render();
+  });
+  document.getElementById("delClient").addEventListener("click", ()=>{
+    if(confirm(`¿Eliminar a ${c.nombre}? Esto borra su historial.`)){
+      clients = clients.filter(x=>x.id!==c.id);
+      saveClients(clients);
+      closeModal();
+      showToast("Cliente eliminado");
+      render();
+    }
+  });
+}
+
+/* ---------- Backup ---------- */
+function openBackup(){
+  const html = `
+    <div class="overlay" id="ov">
+      <div class="sheet">
+        <button class="close-x" id="cx">✕</button>
+        <h2>Backup</h2>
+        <div class="sub">Los datos viven solo en este celular. Exporta seguido para no perderlos.</div>
+        <div class="actions">
+          <button class="btn primary" id="exportBtn">Exportar (.json)</button>
+        </div>
+        <label>Importar backup</label>
+        <input type="file" id="importFile" accept="application/json">
+        <div class="actions">
+          <button class="btn ghost" id="importBtn">Importar archivo</button>
+        </div>
+      </div>
+    </div>`;
+  modalRoot.innerHTML = html;
+  document.getElementById("cx").addEventListener("click", closeModal);
+  document.getElementById("ov").addEventListener("click", (e)=>{ if(e.target.id==="ov") closeModal(); });
+
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(clients,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `dntraining-asistencia-${todayISO()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Backup descargado");
+  });
+
+  document.getElementById("importBtn").addEventListener("click", ()=>{
+    const file = document.getElementById("importFile").files[0];
+    if(!file){ showToast("Elige un archivo primero"); return; }
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      try{
+        const data = JSON.parse(e.target.result);
+        if(!Array.isArray(data)) throw new Error("formato inválido");
+        clients = data;
+        saveClients(clients);
+        showToast("Backup importado");
+        closeModal();
+        render();
+      }catch(err){ showToast("Archivo inválido"); }
+    };
+    reader.readAsText(file);
+  });
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+/* ---------- Listeners globales ---------- */
+document.getElementById("fab").addEventListener("click", openAddClient);
+document.getElementById("btnBackup").addEventListener("click", openBackup);
+
+/* ---------- Service worker ---------- */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  });
+}
+
+render();
+</script>
+</body>
+</html>
