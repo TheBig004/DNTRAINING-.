@@ -166,6 +166,7 @@ input[type=text],input[type=date],select{width:100%; padding:12px 14px; border-r
 
   <nav id="tabs">
     <div class="tab active" data-tab="dashboard">Bloques</div>
+    <div class="tab" data-tab="clientes">Clientes</div>
     <div class="tab" data-tab="pagos">Pagos</div>
   </nav>
 
@@ -200,6 +201,15 @@ let clients = loadClients();
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function todayISO(){ const d=new Date(); return d.toISOString().slice(0,10); }
 function addDays(iso, n){ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); } // m: 0-indexed
+function addMonthsKeepDay(iso, n){
+  const [y,m,d] = iso.split("-").map(Number);
+  let total = (m-1) + n;
+  const ny = y + Math.floor(total/12);
+  const nm = ((total%12)+12)%12;
+  const nd = Math.min(d, daysInMonth(ny, nm));
+  return `${ny}-${String(nm+1).padStart(2,"0")}-${String(nd).padStart(2,"0")}`;
+}
 function fmtDate(iso){
   const d = new Date(iso+"T00:00:00");
   return d.toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
@@ -210,7 +220,7 @@ function fmtDateShort(iso){
 }
 
 /* ---------- Estado UI ---------- */
-let state = { tab:"dashboard", bloque:null, fecha: todayISO() };
+let state = { tab:"dashboard", bloque:null, fecha: todayISO(), busqueda:"" };
 
 /* ---------- Render raíz ---------- */
 const view = document.getElementById("view");
@@ -221,6 +231,7 @@ function render(){
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.tab===state.tab));
   if(state.tab==="dashboard" && state.bloque===null) renderDashboard();
   else if(state.tab==="dashboard" && state.bloque!==null) renderBloque();
+  else if(state.tab==="clientes") renderClientes();
   else if(state.tab==="pagos") renderPagos();
 }
 
@@ -230,7 +241,16 @@ document.querySelectorAll(".tab").forEach(t=>{
 
 /* ---------- Dashboard de bloques ---------- */
 function renderDashboard(){
-  let html = `<div class="grid-blocks">`;
+  const totalClientes = clients.length;
+  const totalCupos = BLOQUES.length * CAPACIDAD;
+  const vencidos = clients.filter(c=>renewalStatus(c).cls==="bad").length;
+  let html = `
+    <div class="stat-row" style="margin-bottom:18px;">
+      <div class="stat"><div class="n">${totalClientes}</div><div class="l">Clientes</div></div>
+      <div class="stat"><div class="n">${totalClientes}/${totalCupos}</div><div class="l">Cupos usados</div></div>
+      <div class="stat"><div class="n" style="color:${vencidos>0?'var(--magenta)':'var(--navy)'}">${vencidos}</div><div class="l">Vencidos</div></div>
+    </div>
+    <div class="grid-blocks">`;
   BLOQUES.forEach(h=>{
     const inscritos = clients.filter(c=>c.bloque===h).length;
     const pct = Math.min(100, Math.round((inscritos/CAPACIDAD)*100));
@@ -247,6 +267,50 @@ function renderDashboard(){
   view.innerHTML = html;
   document.querySelectorAll(".block-card").forEach(el=>{
     el.addEventListener("click", ()=>{ state.bloque = parseInt(el.dataset.bloque); render(); });
+  });
+}
+
+/* ---------- Registro de clientes (buscador) ---------- */
+function renderClientes(){
+  const term = (state.busqueda||"").toLowerCase();
+  const list = clients.filter(c=>c.nombre.toLowerCase().includes(term)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  let html = `<input type="text" id="searchClientes" placeholder="Buscar cliente por nombre..." value="${escapeHtml(state.busqueda||"")}" style="margin-bottom:16px;">`;
+  html += `<div class="section-title">${list.length} de ${clients.length} clientes</div>`;
+  if(clients.length===0){
+    html += `<div class="empty">Todavía no hay clientes registrados.<br>Toca “+” para agregar el primero.</div>`;
+  } else if(list.length===0){
+    html += `<div class="empty">Sin resultados para “${escapeHtml(state.busqueda)}”.</div>`;
+  } else {
+    list.forEach(c=>{
+      const rs = renewalStatus(c);
+      const pct = attendancePct(c);
+      html += `
+        <div class="client-row" data-open="${c.id}">
+          <div class="info">
+            <div class="nombre">${escapeHtml(c.nombre)}</div>
+            <div class="meta">
+              <span class="pill ${rs.cls}">${rs.label}</span>
+              <span>Bloque ${c.bloque}:00</span>
+              <span>${c.plan}x/sem</span>
+              <span>${(c.dias||[]).join(" · ")}</span>
+              <span>${pct}% asist.</span>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+  view.innerHTML = html;
+  const search = document.getElementById("searchClientes");
+  search.addEventListener("input", (e)=>{
+    state.busqueda = e.target.value;
+    const cursor = e.target.selectionStart;
+    renderClientes();
+    const ni = document.getElementById("searchClientes");
+    ni.focus();
+    ni.setSelectionRange(cursor, cursor);
+  });
+  document.querySelectorAll("[data-open]").forEach(el=>{
+    el.addEventListener("click", ()=> openClientProfile(el.dataset.open));
   });
 }
 
@@ -473,7 +537,8 @@ function openAddClient(){
       valorMensualidad: Number(fValor.value.replace(/\D/g,""))||0,
       fechaInscripcion: document.getElementById("fInsc").value || todayISO(),
       fechaRenovacion: document.getElementById("fRenov").value || addDays(todayISO(),30),
-      historial: []
+      historial: [],
+      pagos: []
     });
     saveClients(clients);
     closeModal();
@@ -518,8 +583,19 @@ function openClientProfile(id){
         <label>Fecha de renovación</label>
         <input type="date" id="fRenovEdit" value="${c.fechaRenovacion}">
         <div class="actions">
-          <button class="btn ghost" id="renovar30">+30 días</button>
-          <button class="btn primary" id="saveRenov">Guardar cambios</button>
+          <button class="btn ghost" id="saveRenov">Guardar cambios</button>
+          <button class="btn primary" id="renovarPago">Registrar pago (+1 mes)</button>
+        </div>
+
+        <label>Historial de pagos</label>
+        <div class="hist">
+          ${(!c.pagos || c.pagos.length===0) ? '<div class="empty" style="padding:16px 0;">Sin pagos registrados aún</div>' :
+            [...c.pagos].sort((a,b)=> new Date(b.fechaPago)-new Date(a.fechaPago)).slice(0,12).map(p=>`
+              <div class="hist-row">
+                <span>${fmtDateShort(p.fechaPago)}</span>
+                <span>vence ${fmtDateShort(p.cubreHasta)}</span>
+                <span class="e p">${fmtMoney(p.monto)}</span>
+              </div>`).join("")}
         </div>
 
         <label>Historial reciente</label>
@@ -554,8 +630,22 @@ function openClientProfile(id){
     fValorEdit.value = digits ? Number(digits).toLocaleString("es-CL") : "";
   });
 
-  document.getElementById("renovar30").addEventListener("click", ()=>{
-    document.getElementById("fRenovEdit").value = addDays(document.getElementById("fRenovEdit").value || todayISO(), 30);
+  document.getElementById("renovarPago").addEventListener("click", ()=>{
+    const base = document.getElementById("fRenovEdit").value || c.fechaRenovacion || todayISO();
+    const next = addMonthsKeepDay(base, 1);
+    c.pagos = c.pagos || [];
+    c.pagos.push({
+      fechaPago: todayISO(),
+      cubreHasta: next,
+      monto: Number(fValorEdit.value.replace(/\D/g,""))||c.valorMensualidad||0
+    });
+    c.fechaRenovacion = next;
+    c.dias = Array.from(editDias);
+    c.valorMensualidad = Number(fValorEdit.value.replace(/\D/g,""))||0;
+    saveClients(clients);
+    closeModal();
+    showToast(`Pago registrado · próxima renovación ${fmtDateShort(next)}`);
+    render();
   });
   document.getElementById("saveRenov").addEventListener("click", ()=>{
     if(editDias.size===0){ showToast("Selecciona al menos un día"); return; }
