@@ -1,4 +1,4 @@
-const CACHE = "dntraining-asistencia-v5";
+const CACHE = "dntraining-asistencia-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,7 +6,8 @@ const ASSETS = [
   "./icon-192.png",
   "./icon-512.png",
   "./logo-96.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./xlsx.core.min.js"
 ];
 
 self.addEventListener("install", (e) => {

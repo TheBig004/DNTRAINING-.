@@ -192,6 +192,7 @@ input[type=text],input[type=date],select{width:100%; padding:12px 14px; border-r
 <div id="modal-root"></div>
 <div class="toast" id="toast"></div>
 
+<script src="xlsx.core.min.js"></script>
 <script>
 /* ---------- Datos ---------- */
 const BLOQUES = [19,20,21,22];
@@ -365,6 +366,12 @@ function renderBloque(){
   const all = clients.filter(c=>c.bloque===h).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const wk = WEEKDAY_KEY_BY_GETDAY[new Date(state.fecha+"T00:00:00").getDay()];
   const list = all.filter(c=> (c.dias||[]).includes(wk));
+  const extra = clients.filter(c=>{
+    if(c.bloque===h) return false;
+    const rec = c.historial.find(r=>r.fecha===state.fecha);
+    return rec && rec.estado==="presente" && rec.bloque===h;
+  }).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
   let html = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
       <button class="icon-btn" id="btnBack">←</button>
@@ -403,15 +410,38 @@ function renderBloque(){
         </div>`;
     });
   }
+
+  html += `<button class="btn ghost" id="btnAsistExtra" style="width:100%;margin-top:14px;">+ Asistencia en otro horario</button>`;
+
+  if(extra.length>0){
+    html += `<div class="section-title">Vinieron a este horario hoy (no es su bloque fijo)</div>`;
+    extra.forEach(c=>{
+      html += `
+        <div class="client-row" data-id="${c.id}">
+          <div class="info" data-open="${c.id}">
+            <div class="nombre">${escapeHtml(c.nombre)}</div>
+            <div class="meta"><span>Su bloque: ${c.bloque}:00</span></div>
+          </div>
+          <div class="chk presente" data-action="quitar-extra" data-id="${c.id}">✓</div>
+        </div>`;
+    });
+  }
+
   view.innerHTML = html;
 
   document.getElementById("btnBack").addEventListener("click", ()=>{ state.bloque=null; render(); });
   document.getElementById("prevDay").addEventListener("click", ()=>{ state.fecha = addDays(state.fecha,-1); render(); });
   document.getElementById("nextDay").addEventListener("click", ()=>{ state.fecha = addDays(state.fecha,1); render(); });
+  document.getElementById("btnAsistExtra").addEventListener("click", ()=> openAsistenciaExtra(h));
 
-  document.querySelectorAll("[data-action]").forEach(el=>{
+  document.querySelectorAll("[data-action='presente'],[data-action='ausente']").forEach(el=>{
     el.addEventListener("click", ()=>{
-      markAttendance(el.dataset.id, el.dataset.action);
+      markAttendance(el.dataset.id, el.dataset.action, h);
+    });
+  });
+  document.querySelectorAll("[data-action='quitar-extra']").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      markAttendance(el.dataset.id, "presente", h); // toca de nuevo = quita la marca (toggle)
     });
   });
   document.querySelectorAll("[data-open]").forEach(el=>{
@@ -419,15 +449,56 @@ function renderBloque(){
   });
 }
 
-function markAttendance(id, estado){
+function openAsistenciaExtra(h){
+  const candidatos = clients.filter(c=>c.bloque!==h).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const html = `
+    <div class="overlay" id="ov">
+      <div class="sheet">
+        <button class="close-x" id="cx">✕</button>
+        <h2>Asistencia en otro horario</h2>
+        <div class="sub">Marca a un cliente que vino al bloque ${h}:00 aunque no sea su horario fijo. Queda registrado como presente hoy (${fmtDate(state.fecha)}).</div>
+        <input type="text" id="searchExtra" placeholder="Buscar cliente...">
+        <div id="listExtra" style="margin-top:14px;"></div>
+      </div>
+    </div>`;
+  modalRoot.innerHTML = html;
+  document.getElementById("cx").addEventListener("click", closeModal);
+  document.getElementById("ov").addEventListener("click", (e)=>{ if(e.target.id==="ov") closeModal(); });
+
+  function paintList(term){
+    const box = document.getElementById("listExtra");
+    const filtered = candidatos.filter(c=>c.nombre.toLowerCase().includes((term||"").toLowerCase()));
+    if(filtered.length===0){ box.innerHTML = `<div class="empty" style="padding:16px 0;">Sin resultados</div>`; return; }
+    box.innerHTML = filtered.map(c=>`
+      <div class="client-row" data-pick="${c.id}">
+        <div class="info">
+          <div class="nombre">${escapeHtml(c.nombre)}</div>
+          <div class="meta"><span>Su bloque: ${c.bloque}:00</span></div>
+        </div>
+      </div>`).join("");
+    box.querySelectorAll("[data-pick]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        markAttendance(el.dataset.pick, "presente", h);
+        closeModal();
+        showToast("Asistencia registrada");
+        render();
+      });
+    });
+  }
+  paintList("");
+  document.getElementById("searchExtra").addEventListener("input", (e)=> paintList(e.target.value));
+}
+
+function markAttendance(id, estado, bloqueAsistido){
   const c = clients.find(c=>c.id===id);
   if(!c) return;
+  const bq = bloqueAsistido!==undefined ? bloqueAsistido : state.bloque;
   const idx = c.historial.findIndex(h=>h.fecha===state.fecha);
   if(idx>-1){
-    if(c.historial[idx].estado===estado){ c.historial.splice(idx,1); } // toca de nuevo = quitar marca
-    else c.historial[idx].estado = estado;
+    if(c.historial[idx].estado===estado && c.historial[idx].bloque===bq){ c.historial.splice(idx,1); } // toca de nuevo = quitar marca
+    else { c.historial[idx].estado = estado; c.historial[idx].bloque = bq; }
   } else {
-    c.historial.push({fecha:state.fecha, estado});
+    c.historial.push({fecha:state.fecha, estado, bloque:bq});
   }
   saveClients(clients);
   render();
@@ -457,6 +528,13 @@ function renderResumen(){
   const avgGrupal = groupAvgPct(clients);
 
   let html = `
+    <div class="chart-card">
+      <div class="ct-title">Descargar resumen mensual</div>
+      <label style="margin-top:0;">Mes</label>
+      <input type="month" id="mesExport" value="${todayISO().slice(0,7)}">
+      <button class="btn primary" id="btnExportExcel" style="width:100%;margin-top:14px;">Descargar Excel (.xlsx)</button>
+    </div>
+
     <div class="chart-card">
       <div class="ct-title">Asistencia grupal</div>
       <div class="donut-wrap">
@@ -501,12 +579,88 @@ function renderResumen(){
   html += `</div>`;
 
   view.innerHTML = html;
+  document.getElementById("btnExportExcel").addEventListener("click", ()=>{
+    exportExcelMensual(document.getElementById("mesExport").value || todayISO().slice(0,7));
+  });
   document.querySelectorAll("[data-open]").forEach(el=>{
     el.addEventListener("click", ()=> openClientProfile(el.dataset.open));
   });
 }
 
-/* ---------- Vista de pagos ---------- */
+function exportExcelMensual(mes){
+  if(typeof XLSX === "undefined"){ showToast("No se pudo cargar el motor de Excel"); return; }
+  const [y,m] = mes.split("-").map(Number);
+  const enMes = (fecha)=> fecha && fecha.slice(0,7)===mes;
+
+  // Hoja Resumen
+  const ingresoMensual = clients.reduce((s,c)=>s+(Number(c.valorMensualidad)||0),0);
+  const vencidosN = clients.filter(c=>renewalStatus(c).cls==="bad").length;
+  const resumenRows = [{
+    "Mes": mes,
+    "Clientes activos": clients.length,
+    "Cupos usados": `${clients.length}/${BLOQUES.length*CAPACIDAD}`,
+    "Asistencia grupal promedio (%)": groupAvgPct(clients),
+    "Ingreso mensual esperado": ingresoMensual,
+    "Clientes vencidos": vencidosN
+  }];
+
+  // Hoja Clientes
+  const clientesRows = clients.map(c=>{
+    const histMes = (c.historial||[]).filter(h=>enMes(h.fecha));
+    const presMes = histMes.filter(h=>h.estado==="presente").length;
+    const ausMes = histMes.filter(h=>h.estado==="ausente").length;
+    const pctMes = histMes.length ? Math.round((presMes/histMes.length)*100) : 0;
+    return {
+      "Nombre": c.nombre,
+      "Bloque": `${c.bloque}:00`,
+      "Plan": `${c.plan}x/semana`,
+      "Días": (c.dias||[]).join(" "),
+      "Valor mensualidad": Number(c.valorMensualidad)||0,
+      "Fecha renovación": c.fechaRenovacion,
+      "Estado pago": renewalStatus(c).label,
+      "% asistencia (mes)": pctMes,
+      "Presentes (mes)": presMes,
+      "Ausentes (mes)": ausMes,
+      "% asistencia (histórico)": attendancePct(c)
+    };
+  });
+
+  // Hoja Asistencia del mes
+  const asistRows = [];
+  clients.forEach(c=>{
+    (c.historial||[]).filter(h=>enMes(h.fecha)).forEach(h=>{
+      asistRows.push({
+        "Fecha": h.fecha,
+        "Cliente": c.nombre,
+        "Bloque": `${(h.bloque!==undefined?h.bloque:c.bloque)}:00`,
+        "Estado": h.estado==="presente" ? "Presente" : "Ausente"
+      });
+    });
+  });
+  asistRows.sort((a,b)=> a.Fecha.localeCompare(b.Fecha));
+
+  // Hoja Pagos del mes
+  const pagosRows = [];
+  clients.forEach(c=>{
+    (c.pagos||[]).filter(p=>enMes(p.fechaPago)).forEach(p=>{
+      pagosRows.push({
+        "Fecha de pago": p.fechaPago,
+        "Cliente": c.nombre,
+        "Cubre hasta": p.cubreHasta,
+        "Monto": Number(p.monto)||0
+      });
+    });
+  });
+  pagosRows.sort((a,b)=> a["Fecha de pago"].localeCompare(b["Fecha de pago"]));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumenRows), "Resumen");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientesRows), "Clientes");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(asistRows.length?asistRows:[{"Info":"Sin registros este mes"}]), "Asistencia");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pagosRows.length?pagosRows:[{"Info":"Sin pagos este mes"}]), "Pagos");
+  XLSX.writeFile(wb, `DNTraining-resumen-${mes}.xlsx`);
+  showToast("Excel descargado");
+}
 function renderPagos(){
   const sorted = [...clients].sort((a,b)=> new Date(a.fechaRenovacion) - new Date(b.fechaRenovacion));
   const ingresoMensual = clients.reduce((s,c)=>s+(Number(c.valorMensualidad)||0),0);
